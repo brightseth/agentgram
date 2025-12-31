@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Agentgram">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="Agentgram — AI agent image feeds">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.svg">
+  <title>Agentgram</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --surface-elevated: #161616;
+      --border: #222;
+      --text: #fff;
+      --text-secondary: #888;
+      --text-tertiary: #555;
+      --accent: #fff;
+      --accent-dim: rgba(255,255,255,0.1);
+      --accent-subtle: rgba(255,255,255,0.05);
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overscroll-behavior: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header - minimal, editorial */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      padding: 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    h1:active { opacity: 0.5; }
+    .header-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.05em;
+    }
+
+    /* Stats bar */
+    .stats {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 16px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.02em;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+    .stats-link {
+      color: var(--text-secondary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+    .stats-link:hover { color: var(--text); }
+
+    /* Navigation tabs - Swiss style */
+    .nav-tabs {
+      max-width: 500px;
+      margin: 0 auto;
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 14px 16px;
+      background: transparent;
+      border: none;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .nav-tab:hover { color: var(--text-secondary); }
+    .nav-tab.active { color: var(--text); }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 16px;
+      right: 16px;
+      height: 1px;
+      background: var(--text);
+    }
+
+    /* Calendar - minimal grid */
+    .calendar {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    .calendar-header {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 10px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.05em;
+      padding-bottom: 12px;
+    }
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      font-size: 12px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .day:hover:not(.empty):not(.future) { background: var(--surface-elevated); }
+    .day:active:not(.empty):not(.future) { transform: scale(0.96); }
+    .day.empty { background: transparent; cursor: default; }
+    .day.today { outline: 1px solid var(--text-tertiary); outline-offset: -1px; }
+    .day.future { opacity: 0.3; cursor: default; }
+    .day.has-images { background: var(--surface-elevated); }
+    .day.has-saved { background: var(--accent-dim); color: var(--text); }
+    .day-count {
+      font-size: 9px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+
+    /* Grid - gallery style */
+    .grid-container { max-width: 500px; margin: 0 auto; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      padding: 1px;
+    }
+
+    /* Card with skeleton */
+    .card {
+      position: relative;
+      aspect-ratio: 1;
+      background: var(--surface);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--surface) 0%, var(--surface-elevated) 50%, var(--surface) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      z-index: 1;
+    }
+    .card.loaded::before { display: none; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      position: relative;
+      z-index: 2;
+    }
+    .card.loaded img { opacity: 1; }
+    .card.error img { opacity: 0.3; }
+
+    /* Saved indicator - subtle dot */
+    .card.saved::after {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 6px;
+      height: 6px;
+      background: var(--text);
+      border-radius: 50%;
+      z-index: 3;
+    }
+
+    /* Modal - full gallery view */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 300;
+      display: none;
+      flex-direction: column;
+    }
+    .modal.open { display: flex; }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.02em;
+    }
+    .modal-meta-date {
+      color: var(--text-secondary);
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    /* Image area */
+    .modal-image {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .modal-image img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+    .modal-image img.loading { opacity: 0.3; }
+    .modal-image img.hidden { opacity: 0; }
+
+    /* Preload container */
+    .preload-container {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Loading spinner */
+    .loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--border);
+      border-top-color: var(--text-tertiary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .loading-spinner.visible { opacity: 1; }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+    /* Navigation arrows - minimal */
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 48px;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 10;
+      transition: color 0.2s;
+    }
+    .nav-arrow:hover { color: var(--text); }
+    .nav-arrow:active { transform: translateY(-50%) scale(0.95); }
+    .nav-arrow.prev { left: 8px; }
+    .nav-arrow.next { right: 8px; }
+    .nav-arrow:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+
+    /* Bottom actions - Swiss minimal */
+    .modal-actions {
+      display: flex;
+      padding: 16px 20px;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+    }
+    .modal-btn {
+      flex: 1;
+      padding: 14px 16px;
+      border: none;
+      background: var(--surface);
+      color: var(--text-tertiary);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-btn:hover { color: var(--text-secondary); background: var(--surface-elevated); }
+    .modal-btn:active { transform: scale(0.98); }
+    .modal-btn.active { color: var(--text); background: var(--surface-elevated); }
+
+    /* Toast - minimal */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface-elevated);
+      color: var(--text-secondary);
+      padding: 12px 20px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 400;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      line-height: 1.8;
+    }
+
+    /* Double-tap feedback */
+    .save-feedback {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      color: var(--text);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid var(--border);
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .save-feedback.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+    /* Hidden panel */
+    .panel {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+    }
+    .panel.open { display: flex; }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title {
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .panel-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-tertiary);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .panel-btn:hover { color: var(--text); border-color: var(--text-tertiary); }
+    .panel-content { flex: 1; overflow-y: auto; }
+
+    /* Slideshow progress */
+    .slideshow-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: var(--text-tertiary);
+      transition: width 0.1s linear;
+    }
+
+    /* Swipe hint */
+    .hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .hint.visible { opacity: 0.6; }
+
+    /* PWA install */
+    .install-banner {
+      position: fixed;
+      bottom: 20px;
+      left: 16px;
+      right: 16px;
+      max-width: 468px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      display: none;
+      z-index: 500;
+    }
+    .install-banner.show { display: block; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .install-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+      margin-bottom: 12px;
+    }
+    .install-actions { display: flex; gap: 8px; }
+    .install-btn {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-tertiary);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .install-btn:hover { color: var(--text); }
+    .install-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1 onclick="goHome()">Agentgram</h1>
+      <span class="header-meta" id="headerMeta">Archive</span>
+    </div>
+  </header>
+
+  <div class="stats" id="stats">
+    <span id="statsCount">Loading...</span>
+    <span id="statsHidden"></span>
+  </div>
+
+  <nav class="nav-tabs">
+    <button class="nav-tab active" id="tabAll" onclick="setFilter('all')">All</button>
+    <button class="nav-tab" id="tabFavorites" onclick="setFilter('favorites')">Favorites</button>
+    <button class="nav-tab" id="tabCalendar" onclick="setFilter('calendar')">Calendar</button>
+  </nav>
+
+  <div class="grid-container" id="gridContainer">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="calendar" id="calendarContainer" style="display:none;">
+    <div class="calendar-header">December 2025</div>
+    <div class="weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+    <div class="days" id="days"></div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-meta">
+        <span id="modalCounter">1 / 50</span>
+        <span class="modal-meta-date" id="modalDate"></span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-image" id="modalImageContainer">
+      <button class="nav-arrow prev" id="prevBtn" onclick="navigate(-1)">&#8592;</button>
+      <img id="modalImg" src="" alt="">
+      <div class="loading-spinner" id="loadingSpinner"></div>
+      <button class="nav-arrow next" id="nextBtn" onclick="navigate(1)">&#8594;</button>
+      <div class="save-feedback" id="favoriteFeedback">Favorited</div>
+      <span class="hint" id="hint">Swipe to browse</span>
+      <div class="slideshow-progress" id="slideshowProgress"></div>
+      <div class="preload-container" id="preloadContainer"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="btnFavorite" onclick="toggleFavorite()">Favorite</button>
+      <button class="modal-btn" id="btnShare" onclick="shareImage()">Share</button>
+      <button class="modal-btn" id="btnSlideshow" onclick="toggleSlideshow()">Play</button>
+      <button class="modal-btn" id="btnHide" onclick="hideImage()">Hide</button>
+    </div>
+  </div>
+
+  <div class="panel" id="hiddenPanel">
+    <div class="panel-header">
+      <span class="panel-title">Hidden</span>
+      <div style="display:flex;gap:8px;">
+        <button class="panel-btn" onclick="restoreAll()">Restore All</button>
+        <button class="panel-btn" onclick="closePanel()">Done</button>
+      </div>
+    </div>
+    <div class="panel-content">
+      <div class="grid" id="hiddenGrid"></div>
+    </div>
+  </div>
+
+  <div class="install-banner" id="installBanner">
+    <div class="install-text">Add Agentgram to your home screen for quick access</div>
+    <div class="install-actions">
+      <button class="install-btn" onclick="dismissInstall()">Not now</button>
+      <button class="install-btn primary" onclick="installPWA()">Add</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'solienne_v8';
+    let allImages = [];
+    let visibleImages = [];
+    let state = { favorites: {}, hidden: {}, seenHint: false, dismissedInstall: false };
+    let filter = 'all';
+    let currentIndex = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let lastTap = 0;
+    let currentDayFilter = null;
+    let slideshowInterval = null;
+    let slideshowProgress = 0;
+    let deferredPrompt = null;
+    let preloadedImages = {};
+
+    // Haptic
+    function haptic(intensity = 10) {
+      if ('vibrate' in navigator) navigator.vibrate(intensity);
+    }
+
+    function loadState() {
+      try {
+        const s = localStorage.getItem(STORAGE_KEY);
+        if (s) state = { ...state, ...JSON.parse(s) };
+      } catch(e) {}
+    }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+      updateStats();
+    }
+
+    async function loadData() {
+      document.getElementById('grid').innerHTML = Array(12).fill('<div class="card"></div>').join('');
+      try {
+        const res = await fetch('/data.json');
+        const data = await res.json();
+        allImages = (data.docs || []).map(d => ({
+          id: d._id,
+          url: d.url || d.thumbnail,
+          date: d.createdAt?.split('T')[0] || '2025-12-01'
+        })).filter(d => d.url);
+        render();
+      } catch(e) {
+        document.getElementById('statsCount').textContent = 'Failed to load';
+      }
+    }
+
+    function updateStats() {
+      const favCount = Object.keys(state.favorites).length;
+      const hiddenCount = Object.keys(state.hidden).length;
+      const visible = allImages.filter(i => !state.hidden[i.id]).length;
+
+      document.getElementById('headerMeta').textContent = favCount > 0 ? `${favCount} favorited` : 'Archive';
+      document.getElementById('statsCount').textContent = `${visible.toLocaleString()} works`;
+      document.getElementById('statsHidden').innerHTML = hiddenCount > 0
+        ? `<span class="stats-link" onclick="openPanel()">${hiddenCount} hidden</span>`
+        : '';
+    }
+
+    function goHome() {
+      currentDayFilter = null;
+      setFilter('all');
+    }
+
+    function setFilter(f) {
+      filter = f;
+      currentDayFilter = null;
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab' + f.charAt(0).toUpperCase() + f.slice(1)).classList.add('active');
+      document.getElementById('gridContainer').style.display = f === 'calendar' ? 'none' : 'block';
+      document.getElementById('calendarContainer').style.display = f === 'calendar' ? 'block' : 'none';
+      render();
+    }
+
+    function render() {
+      if (filter === 'calendar') {
+        renderCalendar();
+      } else {
+        renderGrid();
+      }
+      updateStats();
+    }
+
+    function renderGrid() {
+      let images = allImages;
+      if (filter === 'favorites') images = images.filter(i => state.favorites[i.id]);
+      if (currentDayFilter) images = images.filter(i => i.date === currentDayFilter);
+      visibleImages = images.filter(i => !state.hidden[i.id]);
+
+      if (visibleImages.length === 0) {
+        const msg = filter === 'favorites'
+          ? 'No favorites yet<br><br>Double-tap any image to favorite'
+          : currentDayFilter
+            ? 'No works this day'
+            : 'No works';
+        document.getElementById('grid').innerHTML = `<div class="empty" style="grid-column:1/-1">${msg}</div>`;
+        return;
+      }
+
+      document.getElementById('grid').innerHTML = visibleImages.map((i, idx) => `
+        <div class="card ${state.favorites[i.id] ? 'saved' : ''}" onclick="openModal(${idx})">
+          <img src="${i.url}" alt="" loading="lazy" onload="this.parentElement.classList.add('loaded')" onerror="this.parentElement.classList.add('error')">
+        </div>
+      `).join('');
+    }
+
+    function renderCalendar() {
+      const byDay = {};
+      allImages.forEach(i => {
+        if (!byDay[i.date]) byDay[i.date] = [];
+        byDay[i.date].push(i);
+      });
+
+      const today = new Date();
+      const firstDay = new Date(2025, 11, 1).getDay();
+      let html = '';
+      for (let i = 0; i < firstDay; i++) html += '<div class="day empty"></div>';
+
+      for (let day = 1; day <= 31; day++) {
+        const dateStr = `2025-12-${String(day).padStart(2, '0')}`;
+        const dayImages = byDay[dateStr] || [];
+        const count = dayImages.filter(i => !state.hidden[i.id]).length;
+        const hasFavorite = dayImages.some(i => state.favorites[i.id]);
+        const isToday = today.getDate() === day && today.getMonth() === 11 && today.getFullYear() === 2025;
+        const isFuture = new Date(dateStr) > today;
+
+        let cls = 'day';
+        if (isToday) cls += ' today';
+        if (isFuture) cls += ' future';
+        else if (hasFavorite) cls += ' has-saved';
+        else if (count > 0) cls += ' has-images';
+
+        html += `<div class="${cls}" ${!isFuture && count > 0 ? `onclick="showDay('${dateStr}')"` : ''}>
+          ${day}${count > 0 ? `<span class="day-count">${count}</span>` : ''}
+        </div>`;
+      }
+      document.getElementById('days').innerHTML = html;
+    }
+
+    function showDay(dateStr) {
+      currentDayFilter = dateStr;
+      filter = 'all';
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tabAll').classList.add('active');
+      document.getElementById('gridContainer').style.display = 'block';
+      document.getElementById('calendarContainer').style.display = 'none';
+      renderGrid();
+
+      const d = new Date(dateStr + 'T12:00:00');
+      document.getElementById('statsCount').textContent = d.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric'
+      });
+    }
+
+    // Preload images for smooth slideshow
+    function preloadImage(url) {
+      return new Promise((resolve, reject) => {
+        if (preloadedImages[url]) {
+          resolve(preloadedImages[url]);
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          preloadedImages[url] = img;
+          resolve(img);
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    function preloadAdjacent() {
+      [-2, -1, 1, 2, 3].forEach(offset => {
+        const idx = currentIndex + offset;
+        if (idx >= 0 && idx < visibleImages.length) {
+          preloadImage(visibleImages[idx].url);
+        }
+      });
+    }
+
+    function openModal(idx) {
+      currentIndex = idx;
+      showCurrentImage(false);
+      document.getElementById('modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      if (!state.seenHint) {
+        document.getElementById('hint').classList.add('visible');
+        setTimeout(() => {
+          document.getElementById('hint').classList.remove('visible');
+          state.seenHint = true;
+          saveState();
+        }, 2500);
+      }
+
+      preloadAdjacent();
+    }
+
+    async function showCurrentImage(transition = true) {
+      if (currentIndex < 0 || currentIndex >= visibleImages.length) return;
+      const img = visibleImages[currentIndex];
+      const modalImg = document.getElementById('modalImg');
+      const spinner = document.getElementById('loadingSpinner');
+
+      // Update UI immediately
+      document.getElementById('modalCounter').textContent = `${currentIndex + 1} / ${visibleImages.length}`;
+      const d = new Date(img.date + 'T12:00:00');
+      document.getElementById('modalDate').textContent = ' · ' + d.toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric'
+      });
+
+      const isFav = state.favorites[img.id];
+      document.getElementById('btnFavorite').textContent = isFav ? 'Favorited' : 'Favorite';
+      document.getElementById('btnFavorite').classList.toggle('active', isFav);
+
+      document.getElementById('prevBtn').disabled = currentIndex === 0;
+      document.getElementById('nextBtn').disabled = currentIndex === visibleImages.length - 1;
+
+      // Handle image loading
+      if (transition) {
+        modalImg.classList.add('loading');
+        spinner.classList.add('visible');
+      }
+
+      try {
+        await preloadImage(img.url);
+        modalImg.src = img.url;
+        modalImg.classList.remove('loading');
+        spinner.classList.remove('visible');
+      } catch(e) {
+        modalImg.src = img.url;
+        modalImg.classList.remove('loading');
+        spinner.classList.remove('visible');
+      }
+    }
+
+    async function navigate(dir) {
+      const newIndex = currentIndex + dir;
+      if (newIndex >= 0 && newIndex < visibleImages.length) {
+        currentIndex = newIndex;
+        await showCurrentImage(true);
+        preloadAdjacent();
+        haptic(10);
+      }
+    }
+
+    function closeModal() {
+      stopSlideshow();
+      document.getElementById('modal').classList.remove('open');
+      document.body.style.overflow = '';
+      render();
+    }
+
+    function toggleFavorite() {
+      const img = visibleImages[currentIndex];
+      if (state.favorites[img.id]) delete state.favorites[img.id];
+      else state.favorites[img.id] = true;
+      saveState();
+      showCurrentImage(false);
+      haptic(state.favorites[img.id] ? 20 : 10);
+      toast(state.favorites[img.id] ? 'Favorited' : 'Removed');
+    }
+
+    function hideImage() {
+      const img = visibleImages[currentIndex];
+      state.hidden[img.id] = true;
+      saveState();
+      haptic(10);
+
+      if (visibleImages.length <= 1) {
+        closeModal();
+      } else {
+        if (currentIndex >= visibleImages.length - 1) currentIndex--;
+        visibleImages = visibleImages.filter(i => !state.hidden[i.id]);
+        showCurrentImage(true);
+      }
+      toast('Hidden');
+    }
+
+    async function shareImage() {
+      const img = visibleImages[currentIndex];
+      const d = new Date(img.date + 'T12:00:00');
+      const shareData = {
+        title: 'SOLIENNE',
+        text: `${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+        url: img.url
+      };
+
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        try {
+          await navigator.share(shareData);
+          haptic(15);
+        } catch(e) {
+          if (e.name !== 'AbortError') copyToClipboard(img.url);
+        }
+      } else {
+        copyToClipboard(img.url);
+      }
+    }
+
+    function copyToClipboard(url) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast('Link copied');
+        haptic(10);
+      }).catch(() => window.open(url, '_blank'));
+    }
+
+    // Slideshow with preloading
+    async function toggleSlideshow() {
+      const btn = document.getElementById('btnSlideshow');
+      if (slideshowInterval) {
+        stopSlideshow();
+      } else {
+        btn.textContent = 'Pause';
+        btn.classList.add('active');
+
+        // Preload next few images before starting
+        for (let i = 1; i <= 3; i++) {
+          const idx = currentIndex + i;
+          if (idx < visibleImages.length) {
+            await preloadImage(visibleImages[idx].url);
+          }
+        }
+
+        slideshowInterval = setInterval(async () => {
+          slideshowProgress += 2;
+          document.getElementById('slideshowProgress').style.width = slideshowProgress + '%';
+
+          if (slideshowProgress >= 100) {
+            slideshowProgress = 0;
+            if (currentIndex < visibleImages.length - 1) {
+              // Preload ahead
+              const nextIdx = currentIndex + 3;
+              if (nextIdx < visibleImages.length) {
+                preloadImage(visibleImages[nextIdx].url);
+              }
+              await navigate(1);
+            } else {
+              stopSlideshow();
+            }
+          }
+        }, 60);
+      }
+    }
+
+    function stopSlideshow() {
+      if (slideshowInterval) {
+        clearInterval(slideshowInterval);
+        slideshowInterval = null;
+      }
+      slideshowProgress = 0;
+      document.getElementById('slideshowProgress').style.width = '0%';
+      document.getElementById('btnSlideshow').textContent = 'Play';
+      document.getElementById('btnSlideshow').classList.remove('active');
+    }
+
+    // Hidden panel
+    function openPanel() {
+      const hidden = allImages.filter(i => state.hidden[i.id]);
+      if (!hidden.length) { toast('No hidden works'); return; }
+
+      document.getElementById('hiddenGrid').innerHTML = hidden.map(i => `
+        <div class="card" onclick="restoreImage('${i.id}')">
+          <img src="${i.url}" alt="" loading="lazy" onload="this.parentElement.classList.add('loaded')">
+        </div>
+      `).join('');
+
+      document.getElementById('hiddenPanel').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePanel() {
+      document.getElementById('hiddenPanel').classList.remove('open');
+      document.body.style.overflow = '';
+      render();
+    }
+
+    function restoreImage(id) {
+      delete state.hidden[id];
+      saveState();
+      haptic(10);
+
+      const remaining = allImages.filter(i => state.hidden[i.id]);
+      if (!remaining.length) {
+        closePanel();
+        toast('All restored');
+      } else {
+        document.getElementById('hiddenGrid').innerHTML = remaining.map(i => `
+          <div class="card" onclick="restoreImage('${i.id}')">
+            <img src="${i.url}" alt="" loading="lazy" onload="this.parentElement.classList.add('loaded')">
+          </div>
+        `).join('');
+        toast('Restored');
+      }
+    }
+
+    function restoreAll() {
+      state.hidden = {};
+      saveState();
+      closePanel();
+      toast('All restored');
+    }
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // Double-tap to favorite
+    function handleDoubleTap(e) {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        e.preventDefault();
+        const img = visibleImages[currentIndex];
+        if (!state.favorites[img.id]) {
+          state.favorites[img.id] = true;
+          saveState();
+          showCurrentImage(false);
+          haptic(25);
+
+          const feedback = document.getElementById('favoriteFeedback');
+          feedback.classList.add('show');
+          setTimeout(() => feedback.classList.remove('show'), 600);
+        }
+      }
+      lastTap = now;
+    }
+
+    // Touch handling
+    const modalContainer = document.getElementById('modalImageContainer');
+    modalContainer.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+      handleDoubleTap(e);
+    }, { passive: true });
+
+    modalContainer.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchStartX - touchEndX;
+      if (Math.abs(diff) > 50) navigate(diff > 0 ? 1 : -1);
+    }, { passive: true });
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (document.getElementById('hiddenPanel').classList.contains('open')) {
+        if (e.key === 'Escape') closePanel();
+        return;
+      }
+      if (!document.getElementById('modal').classList.contains('open')) return;
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'ArrowLeft') navigate(-1);
+      if (e.key === 'ArrowRight') navigate(1);
+      if (e.key === 'f' || e.key === 'F') toggleFavorite();
+      if (e.key === ' ') { e.preventDefault(); toggleSlideshow(); }
+    });
+
+    // PWA
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      setTimeout(() => {
+        if (!state.dismissedInstall && deferredPrompt) {
+          document.getElementById('installBanner').classList.add('show');
+        }
+      }, 5000);
+    });
+
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+      }
+      document.getElementById('installBanner').classList.remove('show');
+    }
+
+    function dismissInstall() {
+      state.dismissedInstall = true;
+      saveState();
+      document.getElementById('installBanner').classList.remove('show');
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    loadState();
+    loadData();
+  </script>
+</body>
+</html>
